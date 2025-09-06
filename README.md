@@ -127,6 +127,22 @@ The class diagram for my project can be seen by clicking on the link below:
 ![UML](docs/UML_Class_Diagram.drawio)
 
 
+## API Design
+
+### Stock Endpoints
+- `GET /stocks` - Get all stocks (supports filtering by industry, exchange)
+- `POST /stocks` - Create new stock
+- `PUT /stocks/{id}` - Update stock
+- `DELETE /stocks/{id}` - Delete stock
+
+### Order Endpoints
+- `GET /orders` - Get order history (supports filtering by side, symbol)
+- `POST /orders` - Place new order
+
+### Portfolio
+- `GET /portfolio` - Get current portfolio holdings
+
+
 
 
 
