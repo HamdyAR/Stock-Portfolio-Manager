@@ -91,7 +91,7 @@ During the entity design phase, I carefully selected fields that balance simplic
 **Stock Entity Fields:**
 ```java
 - UUID id (Primary Key)
-- String stockSymbol (Business Identifier, Unique)
+- String symbol (Business Identifier, Unique)
 - String companyName
 - String exchange
 - String industry
@@ -109,14 +109,16 @@ During the entity design phase, I carefully selected fields that balance simplic
 
 **Rationale for field choices:**
 
-**Industry and exchange fields inclusion**: Enables portfolio diversification analysis and filtering capabilities (e.g., GET /stocks?industry=Technology).
-**Enum for order side**: Prevents invalid values and provides type safety compared to string-based approaches.
-**Timestamp importance**: Essential for order history tracking and potential future time-based portfolio calculations.
-**Price storage**: Fixed price approach suitable for project scope, avoiding complexity of real-time market data.
+- **Industry and exchange fields inclusion**: Enables portfolio diversification analysis and filtering capabilities (e.g., GET /stocks?industry=Technology).
+- **Enum for order side**: Prevents invalid values and provides type safety compared to string-based approaches.
+- **Timestamp importance**: Essential for order history tracking and potential future time-based portfolio calculations.
+- **Price storage**: Fixed price approach suitable for project scope, avoiding complexity of real-time market data.
 
 
 ### ERD
 The entity relationship diagram for my project indicating the database design is illustrated below:
+
+![ERD](docs/erd.png)
 
 ### UML Class Diagram
 
