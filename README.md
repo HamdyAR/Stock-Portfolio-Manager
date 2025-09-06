@@ -52,6 +52,7 @@ While the three-table approach could improve performance for very large datasets
 
 ### 2. System Scope
 **👤 Single-User System**
+
 I decided to build the simplest version of this project as version 1, which features only a single user. This approach keeps the project manageable within the submission timeline and allows focus on core portfolio functionality rather than user management complexity. Additionally, user authentication and authorization concepts will be covered later in the course curriculum.
 
 **Note:** Version 2 will include multi-user support, real-time stock prices, and external API integration.
@@ -121,6 +122,9 @@ The entity relationship diagram for my project indicating the database design is
 ![ERD](docs/erd.png)
 
 ### UML Class Diagram
+The class diagram for my project can be seen by clicking on the link below:
+
+![UML](docs/UML_Class_Diagram.drawio)
 
 
 
