@@ -1,0 +1,1 @@
+-- Sample stocks for Stock Portfolio Manager
