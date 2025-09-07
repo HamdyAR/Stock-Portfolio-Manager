@@ -28,6 +28,12 @@ src/main/resources/data.sql
 ```
 Note: Spring Boot will automatically execute this file at startup to insert sample records provided in the file into the tables.
 
+### 4. Run project
+To run the project, use the following command:
+```
+./mvnw spring-boot:run
+```
+
 ## Design Considerations
 ### 1. Data Modelling
 During the design phase, I evaluated two approaches for modelling the data:
