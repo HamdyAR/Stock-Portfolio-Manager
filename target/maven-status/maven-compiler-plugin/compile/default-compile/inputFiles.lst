@@ -1,4 +1,11 @@
 /Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/StockPortfolioManagerApplication.java
+/Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/order/CreateOrderRequest.java
+/Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/order/Order.java
+/Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/order/OrderController.java
+/Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/order/OrderRepository.java
+/Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/order/OrderService.java
+/Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/order/OrderSide.java
+/Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/order/PortfolioItem.java
 /Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/stock/Stock.java
 /Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/stock/StockController.java
 /Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/stock/StockRepository.java
