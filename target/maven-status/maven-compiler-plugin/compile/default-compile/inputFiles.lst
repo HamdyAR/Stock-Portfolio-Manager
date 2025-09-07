@@ -1,4 +1,5 @@
 /Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/StockPortfolioManagerApplication.java
+/Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/config/SwaggerConfig.java
 /Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/exceptions/DuplicateStockException.java
 /Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/exceptions/GlobalExceptionHandler.java
 /Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/exceptions/InsufficientHoldingsException.java
