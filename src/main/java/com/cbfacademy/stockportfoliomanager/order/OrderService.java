@@ -2,14 +2,14 @@ package com.cbfacademy.stockportfoliomanager.order;
 
 import com.cbfacademy.stockportfoliomanager.stock.Stock;
 import com.cbfacademy.stockportfoliomanager.stock.StockService;
-import org.springframework.http.HttpStatus;
+import com.cbfacademy.stockportfoliomanager.exceptions.InvalidOrderException;
+import com.cbfacademy.stockportfoliomanager.exceptions.InsufficientHoldingsException;
+import com.cbfacademy.stockportfoliomanager.exceptions.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.UUID;
 
 @Service
@@ -23,49 +23,33 @@ public class OrderService {
         this.stockService = stockService;
     }
     
-    public Order placeOrder(String stockSymbol, OrderSide side, Integer volume, BigDecimal price) 
-            throws IllegalArgumentException {
+    public Order placeOrder(String stockSymbol, OrderSide side, Integer volume, BigDecimal price) {
         
         // Validate input parameters
         if (stockSymbol == null || stockSymbol.trim().isEmpty()) {
-            throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST, 
-                "Stock symbol cannot be null or empty"
-            );
+            throw new InvalidOrderException("Stock symbol cannot be null or empty");
         }
         
         if (side == null) {
-            throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST, 
-                "Order side cannot be null"
-            );
+            throw new InvalidOrderException("Order side cannot be null");
         }
         
         if (volume == null || volume <= 0) {
-            throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST, 
-                "Volume must be positive"
-            );
+            throw new InvalidOrderException("Volume must be positive and greater than zero");
         }
         
         if (price == null || price.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST, 
-                "Price must be positive"
-            );
+            throw new InvalidOrderException("Price must be positive and greater than zero");
         }
         
-        // Verify stock exists
+        // Verify stock exists (will throw ResourceNotFoundException if not found)
         Stock stock = stockService.getStockBySymbol(stockSymbol);
         
         // For sell orders, check if user has sufficient holdings
         if (side == OrderSide.SELL) {
             Integer currentHoldings = getCurrentHoldingsForStock(stockSymbol);
             if (currentHoldings < volume) {
-                throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Insufficient holdings. Current holdings: " + currentHoldings + ", attempted to sell: " + volume
-                );
+                throw new InsufficientHoldingsException(stockSymbol, volume, currentHoldings);
             }
         }
         
@@ -78,12 +62,9 @@ public class OrderService {
         return orderRepository.findAllByOrderByTimestampDesc();
     }
     
-    public Order getOrderById(UUID id) throws NoSuchElementException {
+    public Order getOrderById(UUID id) {
         return orderRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(
-                HttpStatus.NOT_FOUND,
-                "Order not found with id: " + id
-            ));
+            .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + id));
     }
     
     public List<Order> getOrdersByStock(String stockSymbol) {

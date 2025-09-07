@@ -1,4 +1,10 @@
 /Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/StockPortfolioManagerApplication.java
+/Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/exceptions/DuplicateStockException.java
+/Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/exceptions/GlobalExceptionHandler.java
+/Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/exceptions/InsufficientHoldingsException.java
+/Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/exceptions/InvalidOrderException.java
+/Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/exceptions/InvalidStockDataException.java
+/Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/exceptions/ResourceNotFoundException.java
 /Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/order/CreateOrderRequest.java
 /Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/order/Order.java
 /Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/order/OrderController.java
