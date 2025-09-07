@@ -1,5 +1,7 @@
 package com.cbfacademy.stockportfoliomanager.exceptions;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Exception thrown when input data for a Stock is invalid.
  *
@@ -12,6 +14,10 @@ package com.cbfacademy.stockportfoliomanager.exceptions;
  *
  * 
  */
+@Schema(
+    description = "Exception thrown when stock input data is invalid (e.g., null/empty symbol, pre-assigned ID)",
+    example = "Invalid stock data: symbol cannot be null or empty"
+)
 public class InvalidStockDataException extends RuntimeException {
     public InvalidStockDataException(String message) {
         super(message);
