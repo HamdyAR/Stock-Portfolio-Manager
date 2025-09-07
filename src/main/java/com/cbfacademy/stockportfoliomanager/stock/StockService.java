@@ -1,65 +1,73 @@
 package com.cbfacademy.stockportfoliomanager.stock;
 
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
+
+import com.cbfacademy.stockportfoliomanager.exceptions.DuplicateStockException;
+import com.cbfacademy.stockportfoliomanager.exceptions.InvalidStockDataException;
+import com.cbfacademy.stockportfoliomanager.exceptions.ResourceNotFoundException;
 
 @Service
 public class StockService {
     private final StockRepository stockRepository;
 
-    public StockService(StockRepository stockRepository){
+    public StockService(StockRepository stockRepository) {
         this.stockRepository = stockRepository;
     }
 
-    public Stock createStock(Stock stock) throws IllegalArgumentException{
-         if (stock.getSymbol() == null || stock.getSymbol().trim().isEmpty()) {
-            throw new IllegalArgumentException("Stock symbol cannot be null or empty");
+    public Stock createStock(Stock stock) {
+        if (stock.getSymbol() == null || stock.getSymbol().trim().isEmpty()) {
+            throw new InvalidStockDataException("Stock symbol cannot be null or empty");
         }
 
-        if(stock.getId() != null){
-            throw new IllegalArgumentException("Stock already has an ID, cannot create");
+        if (stock.getId() != null) {
+            throw new InvalidStockDataException("Stock already has an ID, cannot create");
         }
-        if(stockRepository.existsBySymbol(stock.getSymbol())){
-            throw new IllegalArgumentException("Stock with symbol " + stock.getSymbol() + " already exists");
+
+        if (stockRepository.existsBySymbol(stock.getSymbol())) {
+            throw new DuplicateStockException(stock.getSymbol());
         }
+
         return stockRepository.save(stock);
     }
 
-    public List<Stock> getAllStocks(){
-       return stockRepository.findAll();
+    public List<Stock> getAllStocks() {
+        return stockRepository.findAll();
     }
 
-    public Stock getStockById(UUID id) throws NoSuchElementException{
-       return stockRepository.findById(id).orElseThrow(() -> new NoSuchElementException("Stock not found with id: " + id));
+    public Stock getStockById(UUID id) {
+        return stockRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Stock not found with id: " + id));
     }
 
-    public Stock updateStock(UUID id, Stock stock) throws NoSuchElementException{
-        Stock existingStock = stockRepository.findById(id).orElseThrow(() -> new NoSuchElementException("Stock not found with id: " + id));
+    public Stock updateStock(UUID id, Stock stock) {
+        Stock existingStock = stockRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Stock not found with id: " + id));
 
-        if(!existingStock.getSymbol().equals(stock.getSymbol()) && stockRepository.existsBySymbol(stock.getSymbol())){
-            throw new IllegalArgumentException("Stock with symbol " + stock.getSymbol() + " already exists");
+        if (!existingStock.getSymbol().equals(stock.getSymbol())
+            && stockRepository.existsBySymbol(stock.getSymbol())) {
+            throw new DuplicateStockException(stock.getSymbol());
         }
+
         existingStock.setSymbol(stock.getSymbol());
         existingStock.setCompanyName(stock.getCompanyName());
         existingStock.setExchange(stock.getExchange());
         existingStock.setIndustry(stock.getIndustry());
 
         return stockRepository.save(existingStock);
-
     }
 
-    public void deleteStock(UUID id){
-       Stock existingStock = stockRepository.findById(id).orElseThrow(() -> new NoSuchElementException("Stock not found with id: " + id));
-       stockRepository.delete(existingStock);
+    public void deleteStock(UUID id) {
+        Stock existingStock = stockRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Stock not found with id: " + id));
+        stockRepository.delete(existingStock);
     }
 
-
-    public Stock getStockBySymbol(String symbol) throws NoSuchElementException {
+    public Stock getStockBySymbol(String symbol) {
         return stockRepository.findBySymbol(symbol)
-            .orElseThrow(() -> new NoSuchElementException("Stock not found with symbol: " + symbol));
+            .orElseThrow(() -> new ResourceNotFoundException("Stock not found with symbol: " + symbol));
     }
 
     public List<Stock> getStocksByIndustry(String industry) {
@@ -77,6 +85,4 @@ public class StockService {
     public boolean stockExists(String symbol) {
         return stockRepository.existsBySymbol(symbol);
     }
-
-
 }
