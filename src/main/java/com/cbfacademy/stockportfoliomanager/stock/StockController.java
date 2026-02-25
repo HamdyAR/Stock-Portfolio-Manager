@@ -15,6 +15,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.cbfacademy.stockportfoliomanager.stock.dto.CreateStockRequest;
+import com.cbfacademy.stockportfoliomanager.stock.dto.StockResponse;
+import com.cbfacademy.stockportfoliomanager.stock.dto.UpdateStockRequest;
+
+import jakarta.validation.Valid;
+
 @RestController
 @RequestMapping("/api/stocks")
 public class StockController {
@@ -26,18 +32,21 @@ public class StockController {
 
     //Create a new stock
     @PostMapping
-    public ResponseEntity<Stock> createStock(@RequestBody Stock stock){
-        Stock createdStock = stockService.createStock(stock);
-        return new ResponseEntity<>(createdStock, HttpStatus.CREATED);
+    public ResponseEntity<StockResponse> createStock(@Valid @RequestBody CreateStockRequest request){
+        StockResponse createdStock = stockService.createStock(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdStock);
     }
     
     //Get all stocks
     @GetMapping
-    public ResponseEntity<List<Stock>> getAllStocks(
+    public ResponseEntity<List<StockResponse>> getAllStocks(
         @RequestParam(required = false) String industry,
         @RequestParam(required = false) String exchange) {
     
-        List<Stock> stocks;
+        industry = (industry == null) ? null : industry.trim();
+        exchange = (exchange == null) ? null : exchange.trim();
+        
+        List<StockResponse> stocks;
     
     if (industry != null && exchange != null) {
         stocks = stockService.getStocksByIndustryAndExchange(industry, exchange);
@@ -54,15 +63,15 @@ public class StockController {
 
     // Get stock by ID
     @GetMapping("/{id}")
-    public ResponseEntity<Stock> getStockById(@PathVariable UUID id) {
-        Stock stock = stockService.getStockById(id);
+    public ResponseEntity<StockResponse> getStockById(@PathVariable UUID id) {
+        StockResponse stock = stockService.getStockById(id);
         return ResponseEntity.ok(stock);
     }
 
     // Update stock
     @PutMapping("/{id}")
-    public ResponseEntity<Stock> updateStock(@PathVariable UUID id, @RequestBody Stock stock) {
-        Stock updatedStock = stockService.updateStock(id, stock);
+    public ResponseEntity<StockResponse> updateStock(@PathVariable UUID id, @Valid @RequestBody UpdateStockRequest request) {
+        StockResponse updatedStock = stockService.updateStock(id, request);
         return ResponseEntity.ok(updatedStock);
     }
 
@@ -75,8 +84,8 @@ public class StockController {
     
     //Get stock by symbol
     @GetMapping("/symbol/{symbol}")
-    public ResponseEntity<Stock> getStockBySymbol(@PathVariable String symbol) {
-        Stock stock = stockService.getStockBySymbol(symbol);
+    public ResponseEntity<StockResponse> getStockBySymbol(@PathVariable String symbol) {
+        StockResponse stock = stockService.getStockBySymbol(symbol);
         return ResponseEntity.ok(stock);
     }
 }

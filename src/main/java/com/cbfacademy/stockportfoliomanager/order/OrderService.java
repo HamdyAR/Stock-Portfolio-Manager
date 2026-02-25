@@ -2,21 +2,28 @@ package com.cbfacademy.stockportfoliomanager.order;
 
 import com.cbfacademy.stockportfoliomanager.stock.Stock;
 import com.cbfacademy.stockportfoliomanager.stock.StockService;
+import com.cbfacademy.stockportfoliomanager.stock.dto.StockResponse;
 import com.cbfacademy.stockportfoliomanager.exceptions.InvalidOrderException;
 import com.cbfacademy.stockportfoliomanager.exceptions.InsufficientHoldingsException;
 import com.cbfacademy.stockportfoliomanager.exceptions.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Service
+@Transactional
 public class OrderService {
     
     private final OrderRepository orderRepository;
     private final StockService stockService;
+    private static final Logger logger = LoggerFactory.getLogger(OrderService.class);
     
     public OrderService(OrderRepository orderRepository, StockService stockService) {
         this.orderRepository = orderRepository;
@@ -43,7 +50,7 @@ public class OrderService {
         }
         
         // Verify stock exists (will throw ResourceNotFoundException if not found)
-        Stock stock = stockService.getStockBySymbol(stockSymbol);
+        StockResponse stock = stockService.getStockBySymbol(stockSymbol);
         
         // For sell orders, check if user has sufficient holdings
         if (side == OrderSide.SELL) {
@@ -59,6 +66,7 @@ public class OrderService {
     }
     
     public List<Order> getAllOrders() {
+        logger.info("Retrieving all orders");
         return orderRepository.findAllByOrderByTimestampDesc();
     }
     

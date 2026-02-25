@@ -208,7 +208,7 @@ class StockServiceTest {
     void getStocksByIndustry_ReturnsFilteredStocks() {
         
         List<Stock> techStocks = Arrays.asList(testStock);
-        when(stockRepository.findByIndustry("Technology")).thenReturn(techStocks);
+        when(stockRepository.findByIndustryIgnoreCase("Technology")).thenReturn(techStocks);
 
        
         List<Stock> result = stockService.getStocksByIndustry("Technology");
@@ -217,7 +217,7 @@ class StockServiceTest {
         assertNotNull(result);
         assertEquals(1, result.size());
         assertEquals("AAPL", result.get(0).getSymbol());
-        verify(stockRepository).findByIndustry("Technology");
+        verify(stockRepository).findByIndustryIgnoreCase("Technology");
     }
 
     @Test
@@ -238,10 +238,8 @@ class StockServiceTest {
        
         when(stockRepository.existsBySymbol("INVALID")).thenReturn(false);
 
-        
         boolean result = stockService.stockExists("INVALID");
 
-        
         assertFalse(result);
         verify(stockRepository).existsBySymbol("INVALID");
     }

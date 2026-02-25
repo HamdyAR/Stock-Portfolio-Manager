@@ -139,13 +139,16 @@ class OrderServiceTest {
     @Test
     void placeOrder_SellOrderWithInsufficientHoldings_ThrowsInsufficientHoldingsException() {
         // Arrange
+        
         when(stockService.getStockBySymbol("AAPL")).thenReturn(testStock);
-        when(orderRepository.findByStockSymbol("AAPL")).thenReturn(Arrays.asList(testBuyOrder)); // 100 shares
+        // 100 shares
+        when(orderRepository.findByStockSymbol("AAPL")).thenReturn(Arrays.asList(testBuyOrder)); 
 
         // Act & Assert
         InsufficientHoldingsException exception = assertThrows(
             InsufficientHoldingsException.class,
-            () -> orderService.placeOrder("AAPL", OrderSide.SELL, 150, new BigDecimal("155.00")) // Try to sell 150
+            () -> orderService.placeOrder("AAPL", OrderSide.SELL, 150, 
+            new BigDecimal("155.00")) // Try to sell 150
         );
         assertTrue(exception.getMessage().contains("AAPL"));
         verify(stockService).getStockBySymbol("AAPL");

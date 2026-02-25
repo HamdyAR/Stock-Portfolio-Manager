@@ -4,12 +4,17 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.cbfacademy.stockportfoliomanager.exceptions.DuplicateStockException;
 import com.cbfacademy.stockportfoliomanager.exceptions.InvalidStockDataException;
 import com.cbfacademy.stockportfoliomanager.exceptions.ResourceNotFoundException;
+import com.cbfacademy.stockportfoliomanager.stock.dto.CreateStockRequest;
+import com.cbfacademy.stockportfoliomanager.stock.dto.StockResponse;
+import com.cbfacademy.stockportfoliomanager.stock.dto.UpdateStockRequest;
 
 @Service
+@Transactional
 public class StockService {
     private final StockRepository stockRepository;
 
@@ -17,72 +22,100 @@ public class StockService {
         this.stockRepository = stockRepository;
     }
 
-    public Stock createStock(Stock stock) {
-        if (stock.getSymbol() == null || stock.getSymbol().trim().isEmpty()) {
-            throw new InvalidStockDataException("Stock symbol cannot be null or empty");
+    public StockResponse createStock(CreateStockRequest stockRequest) {
+        if (stockRequest.symbol() == null || stockRequest.symbol().isBlank()) {
+            throw new InvalidStockDataException("Stock symbol cannot be null or blank");
         }
 
-        if (stock.getId() != null) {
-            throw new InvalidStockDataException("Stock already has an ID, cannot create");
+
+        String symbol = stockRequest.symbol().trim().toUpperCase();
+
+        if (stockRepository.existsBySymbol(symbol)) {
+            throw new DuplicateStockException(symbol);
         }
 
-        if (stockRepository.existsBySymbol(stock.getSymbol())) {
-            throw new DuplicateStockException(stock.getSymbol());
-        }
+        Stock stock = Stock.builder()
+                .symbol(symbol)
+                .companyName(stockRequest.companyName())
+                .exchange(stockRequest.exchange())
+                .industry(stockRequest.industry())
+                .build();
 
-        return stockRepository.save(stock);
+        Stock saved = stockRepository.save(stock);
+        return toResponse(saved);
     }
 
-    public List<Stock> getAllStocks() {
-        return stockRepository.findAll();
+    public List<StockResponse> getAllStocks() {
+       return stockRepository.findAll().stream()
+                .map(this::toResponse)
+                .toList();
     }
 
-    public Stock getStockById(UUID id) {
-        return stockRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Stock not found with id: " + id));
+    public StockResponse getStockById(UUID id) {
+        Stock stock = stockRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Stock not found with id: " + id));
+        return toResponse(stock);
     }
 
-    public Stock updateStock(UUID id, Stock stock) {
-        Stock existingStock = stockRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Stock not found with id: " + id));
+    public StockResponse updateStock(UUID id, UpdateStockRequest stockRequest) {
+       Stock existing = stockRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Stock not found with id: " + id));
 
-        if (!existingStock.getSymbol().equals(stock.getSymbol())
-            && stockRepository.existsBySymbol(stock.getSymbol())) {
-            throw new DuplicateStockException(stock.getSymbol());
-        }
+        existing.setCompanyName(stockRequest.companyName().trim());
+        existing.setExchange(stockRequest.exchange().trim());
+        existing.setIndustry(stockRequest.industry().trim());
 
-        existingStock.setSymbol(stock.getSymbol());
-        existingStock.setCompanyName(stock.getCompanyName());
-        existingStock.setExchange(stock.getExchange());
-        existingStock.setIndustry(stock.getIndustry());
-
-        return stockRepository.save(existingStock);
+        Stock saved = stockRepository.save(existing);
+        return toResponse(saved);
     }
 
     public void deleteStock(UUID id) {
-        Stock existingStock = stockRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Stock not found with id: " + id));
-        stockRepository.delete(existingStock);
+        if (!stockRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Stock not found with id: " + id);
+        }
+        stockRepository.deleteById(id);
     }
 
-    public Stock getStockBySymbol(String symbol) {
-        return stockRepository.findBySymbol(symbol)
-            .orElseThrow(() -> new ResourceNotFoundException("Stock not found with symbol: " + symbol));
+    public StockResponse getStockBySymbol(String symbol) {
+        String normalized = symbol == null ? null : symbol.trim().toUpperCase();
+
+        Stock stock = stockRepository.findBySymbol(normalized)
+                .orElseThrow(() -> new ResourceNotFoundException("Stock not found with symbol: " + symbol));
+        return toResponse(stock);
     }
 
-    public List<Stock> getStocksByIndustry(String industry) {
-        return stockRepository.findByIndustry(industry);
+    public List<StockResponse> getStocksByIndustry(String industry) {
+         return stockRepository.findByIndustryIgnoreCase(industry).stream()
+                .map(this::toResponse)
+                .toList();
     }
 
-    public List<Stock> getStocksByExchange(String exchange) {
-        return stockRepository.findByExchange(exchange);
+    public List<StockResponse> getStocksByExchange(String exchange) {
+        return stockRepository.findByExchangeIgnoreCase(exchange).stream()
+                .map(this::toResponse)
+                .toList();
     }
 
-    public List<Stock> getStocksByIndustryAndExchange(String industry, String exchange) {
-        return stockRepository.findByIndustryAndExchange(industry, exchange);
+    public List<StockResponse> getStocksByIndustryAndExchange(String industry, String exchange) {
+        return stockRepository.findByIndustryIgnoreCaseAndExchangeIgnoreCase(industry, exchange).stream()
+                .map(this::toResponse)
+                .toList();
     }
 
     public boolean stockExists(String symbol) {
-        return stockRepository.existsBySymbol(symbol);
+        if (symbol == null || symbol.isBlank()) {
+            return false;
+        }
+        return stockRepository.existsBySymbol(symbol.trim().toUpperCase());
+    }
+
+    private StockResponse toResponse(Stock stock) {
+        return new StockResponse(
+                stock.getId(),
+                stock.getSymbol(),
+                stock.getCompanyName(),
+                stock.getExchange(),
+                stock.getIndustry()
+        );
     }
 }
