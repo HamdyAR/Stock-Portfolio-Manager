@@ -8,10 +8,10 @@ A Java Spring Boot REST API for managing stock portfolios. Features include stoc
 
 Clone the repository into your computer using the following command: 
 ```
-git clone https://github.com/your-username/Stock-Portfolio-Manager.git
+git clone https://github.com/HamdyAR/Stock-Portfolio-Manager.git
 ```
 ### 2. Configure MySQL
-Create a file named local.properties in main/src/resources and add the following:
+Create a file named local.properties in src/main/resources and add the following:
 ```
 spring.datasource.url=jdbc:mysql://localhost:3306/stock_portfolio
 
@@ -28,11 +28,97 @@ src/main/resources/data.sql
 ```
 Note: Spring Boot will automatically execute this file at startup to insert sample records provided in the file into the tables.
 
-### 4. Run project
+### 4. Run the Application
 To run the project, use the following command:
 ```
 ./mvnw spring-boot:run
 ```
+
+## API Documentation
+
+### Interactive Swagger Documentation
+
+This project includes comprehensive API documentation using SpringDoc OpenAPI 3.
+
+#### Accessing the Documentation
+
+Once the application is running, you can access the interactive API documentation at:
+
+- **Swagger UI**: `http://localhost:8080/swagger-ui.html`
+- **OpenAPI JSON**: `http://localhost:8080/api-docs`
+
+#### Features
+
+- **Interactive Testing**: Try out API endpoints directly from the browser
+- **Complete Schemas**: Detailed request/response documentation
+- **Validation Rules**: Shows required fields and constraints
+- **Example Requests**: Realistic sample data for all endpoints
+- **Error Responses**: Documents all possible error scenarios
+
+### API Endpoints
+
+#### Stock Management
+- `GET /api/stocks` - Get all stocks (supports filtering by industry, exchange)
+- `GET /api/stocks/id/{id}` - Get stock by UUID
+- `GET /api/stocks/symbol/{symbol}` - Get stock by symbol
+- `POST /api/stocks` - Create new stock
+- `PUT /api/stocks/{id}` - Update stock information
+- `DELETE /api/stocks/{id}` - Delete stock from catalog
+
+#### Order Management
+- `GET /api/orders` - Get order history (supports filtering by side, symbol)
+- `GET /api/orders/{id}` - Get specific order by ID
+- `POST /api/orders` - Place new buy/sell orders
+
+#### Portfolio
+- `GET /api/orders/portfolio` - Get current portfolio holdings
+
+### Request Examples
+
+#### Place an Order
+```json
+POST /api/orders
+{
+  "stockSymbol": "AAPL",
+  "side": "BUY",
+  "volume": 100,
+  "price": 150.50
+}
+```
+
+#### Add a Stock
+```json
+POST /api/stocks
+{
+  "symbol": "MSFT",
+  "companyName": "Microsoft Corporation",
+  "exchange": "NASDAQ",
+  "industry": "Technology"
+}
+```
+
+### Error Handling
+
+The API returns consistent error responses in JSON format:
+
+```json
+{
+  "timestamp": "2025-09-07T23:30:00",
+  "status": 404,
+  "error": "Not Found",
+  "message": "Stock with symbol 'INVALID' not found"
+}
+```
+
+### API Response Formats
+
+All API responses follow RESTful conventions:
+- **200 OK**: Successful GET requests
+- **201 Created**: Successful POST requests
+- **204 No Content**: Successful DELETE requests
+- **400 Bad Request**: Invalid request data
+- **404 Not Found**: Resource not found
+- **409 Conflict**: Business logic conflicts (e.g., insufficient holdings)
 
 ## Design Considerations
 ### 1. Data Modelling
@@ -121,36 +207,12 @@ During the entity design phase, I carefully selected fields that balance simplic
 - **Timestamp importance**: Essential for order history tracking and potential future time-based portfolio calculations.
 - **Price storage**: Fixed price approach suitable for project scope, avoiding complexity of real-time market data.
 
-
 ### ERD
 The entity relationship diagram for my project indicating the database design is illustrated below:
+<img src="docs/erd.png" alt="ERD" width="600"/>
 
-![ERD](docs/erd.png)
+
 
 ### UML Class Diagram
 The class diagram for my project can be seen by clicking on the link below:
-
-![UML](docs/UML_Class_Diagram.drawio)
-
-
-## API Design
-
-### Stock Endpoints
-- `GET /stocks` - Get all stocks (supports filtering by industry, exchange)
-- `POST /stocks` - Create new stock
-- `PUT /stocks/{id}` - Update stock
-- `DELETE /stocks/{id}` - Delete stock
-
-### Order Endpoints
-- `GET /orders` - Get order history (supports filtering by side, symbol)
-- `POST /orders` - Place new order
-
-### Portfolio
-- `GET /portfolio` - Get current portfolio holdings
-
-
-
-
-
-
-
+<img src="docs/UML_Class_Diagram.png" alt="UML Class Diagram" width="600"/>

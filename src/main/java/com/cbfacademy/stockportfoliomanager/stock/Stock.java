@@ -13,6 +13,7 @@ import lombok.*;
 @Builder
 @ToString
 public class Stock {
+    
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -28,7 +29,6 @@ public class Stock {
     
     @Column(nullable = false)
     private String industry;
-
 
     // This runs automatically before an object is saved(Persist) or updated in the database
     @PrePersist
