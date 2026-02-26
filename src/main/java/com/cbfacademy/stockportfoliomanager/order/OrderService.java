@@ -6,12 +6,17 @@ import com.cbfacademy.stockportfoliomanager.stock.dto.StockResponse;
 import com.cbfacademy.stockportfoliomanager.exceptions.InvalidOrderException;
 import com.cbfacademy.stockportfoliomanager.exceptions.InsufficientHoldingsException;
 import com.cbfacademy.stockportfoliomanager.exceptions.ResourceNotFoundException;
+import com.cbfacademy.stockportfoliomanager.order.dto.CreateOrderRequest;
+import com.cbfacademy.stockportfoliomanager.order.dto.OrderResponse;
+import com.cbfacademy.stockportfoliomanager.order.dto.PortfolioItemResponse;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -30,76 +35,83 @@ public class OrderService {
         this.stockService = stockService;
     }
     
-    public Order placeOrder(String stockSymbol, OrderSide side, Integer volume, BigDecimal price) {
+    public OrderResponse placeOrder(CreateOrderRequest request) {
+
+        String symbol = request.stockSymbol().trim().toUpperCase();
+
+        Stock stock = stockService.getStockEntityBySymbol(symbol)
+            .orElseThrow(() -> new ResourceNotFoundException("Stock not found with symbol: " + symbol));
         
-        // Validate input parameters
-        if (stockSymbol == null || stockSymbol.trim().isEmpty()) {
-            throw new InvalidOrderException("Stock symbol cannot be null or empty");
-        }
-        
-        if (side == null) {
-            throw new InvalidOrderException("Order side cannot be null");
-        }
-        
-        if (volume == null || volume <= 0) {
-            throw new InvalidOrderException("Volume must be positive and greater than zero");
-        }
-        
-        if (price == null || price.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new InvalidOrderException("Price must be positive and greater than zero");
-        }
-        
-        // Verify stock exists (will throw ResourceNotFoundException if not found)
-        StockResponse stock = stockService.getStockBySymbol(stockSymbol);
         
         // For sell orders, check if user has sufficient holdings
-        if (side == OrderSide.SELL) {
-            Integer currentHoldings = getCurrentHoldingsForStock(stockSymbol);
-            if (currentHoldings < volume) {
-                throw new InsufficientHoldingsException(stockSymbol, volume, currentHoldings);
+        if (request.side() == OrderSide.SELL) {
+            int currentHoldings = getCurrentHoldingsForStock(symbol);
+            if (currentHoldings < request.volume()) {
+                throw new InsufficientHoldingsException(symbol, request.volume(), currentHoldings);
             }
         }
         
         // Create and save the order
-        Order order = new Order(stock, side, volume, price);
-        return orderRepository.save(order);
+        BigDecimal executedPrice = BigDecimal.ZERO;
+
+        Order order = Order.builder()
+                .stock(stock)
+                .side(request.side())
+                .volume(request.volume())
+                .price(executedPrice)
+                .build();
+
+        Order saved = orderRepository.save(order);
+        return toResponse(saved);
     }
     
-    public List<Order> getAllOrders() {
+    public List<OrderResponse> getAllOrders() {
         logger.info("Retrieving all orders");
-        return orderRepository.findAllByOrderByTimestampDesc();
+        return orderRepository.findAllByOrderByTimestampDesc().stream()
+                .map(this::toResponse)
+                .toList();
     }
     
-    public Order getOrderById(UUID id) {
-        return orderRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + id));
+    public OrderResponse getOrderById(UUID id) {
+         Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + id));
+        return toResponse(order);
     }
     
-    public List<Order> getOrdersByStock(String stockSymbol) {
-        return orderRepository.findByStockSymbol(stockSymbol);
+    public List<OrderResponse> getOrdersByStock(String symbol) {
+        return orderRepository.findByStockSymbol(symbol).stream()
+                .map(this::toResponse)
+                .toList();
     }
-    
-    public List<Order> getOrdersBySide(OrderSide side) {
-        return orderRepository.findBySide(side);
+    public List<OrderResponse> getOrdersBySide(OrderSide side) {
+        return orderRepository.findBySide(side).stream()
+                .map(this::toResponse)
+                .toList();
     }
     
     // Portfolio calculation methods
-    public List<PortfolioItem> getCurrentPortfolio() {
-        List<Object[]> results = orderRepository.calculatePortfolioHoldings();
-        List<PortfolioItem> portfolio = new ArrayList<>();
-        
-        for (Object[] result : results) {
-            String symbol = (String) result[0];
-            String company = (String) result[1];
-            String exchange = (String) result[2];
-            String industry = (String) result[3];
-            Long holdings = (Long) result[4];
-            
-            portfolio.add(new PortfolioItem(symbol, company, exchange, industry, holdings.intValue()));
-        }
-        
-        return portfolio;
-    }
+    public List<PortfolioItemResponse> getCurrentPortfolio() {
+    List<Object[]> results = orderRepository.calculatePortfolioHoldings();
+    
+    return results.stream()
+            .map(result -> {
+                // For now, we set price and market value to ZERO 
+                // until we implement the Alpha Vantage Client
+                BigDecimal mockPrice = BigDecimal.ZERO; 
+                BigDecimal mockMarketValue = BigDecimal.ZERO;
+
+                return new PortfolioItemResponse(
+                    (String) result[0], // symbol
+                    (String) result[1], // companyName
+                    (String) result[2], // exchange
+                    (String) result[3], // industry
+                    ((Long) result[4]).intValue(), // quantity
+                    mockPrice,
+                    mockMarketValue
+                );
+            })
+            .toList();
+}
     
     private Integer getCurrentHoldingsForStock(String stockSymbol) {
         List<Order> orders = orderRepository.findByStockSymbol(stockSymbol);
@@ -115,4 +127,15 @@ public class OrderService {
         
         return holdings;
     }
+
+    private OrderResponse toResponse(Order order) {
+    return new OrderResponse(
+            order.getId(),
+            order.getStock().getSymbol(), 
+            order.getSide(),
+            order.getVolume(),
+            order.getPrice(),
+            order.getTimestamp()
+    );
+}
 }

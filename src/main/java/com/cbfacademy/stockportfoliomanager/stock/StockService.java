@@ -1,6 +1,7 @@
 package com.cbfacademy.stockportfoliomanager.stock;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -107,6 +108,9 @@ public class StockService {
             return false;
         }
         return stockRepository.existsBySymbol(symbol.trim().toUpperCase());
+    }
+    public Optional<Stock> getStockEntityBySymbol(String symbol){
+        return stockRepository.findBySymbol(symbol);
     }
 
     private StockResponse toResponse(Stock stock) {

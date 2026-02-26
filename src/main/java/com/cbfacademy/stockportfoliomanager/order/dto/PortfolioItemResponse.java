@@ -7,7 +7,7 @@ public record PortfolioItemResponse(
         String companyName,
         String exchange,
         String industry,
-        Integer quantity,
+        int quantity,
         BigDecimal currentPrice,
         BigDecimal marketValue
 ) {}

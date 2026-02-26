@@ -32,7 +32,7 @@ public class Order {
     private OrderSide side;
     
     @Column(nullable = false)
-    private Integer volume;
+    private int volume;
     
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
