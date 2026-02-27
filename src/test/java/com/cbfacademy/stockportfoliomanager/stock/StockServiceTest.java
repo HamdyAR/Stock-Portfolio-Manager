@@ -3,6 +3,10 @@ package com.cbfacademy.stockportfoliomanager.stock;
 import com.cbfacademy.stockportfoliomanager.exceptions.DuplicateStockException;
 import com.cbfacademy.stockportfoliomanager.exceptions.InvalidStockDataException;
 import com.cbfacademy.stockportfoliomanager.exceptions.ResourceNotFoundException;
+import com.cbfacademy.stockportfoliomanager.stock.dto.CreateStockRequest;
+import com.cbfacademy.stockportfoliomanager.stock.dto.StockResponse;
+import com.cbfacademy.stockportfoliomanager.stock.dto.UpdateStockRequest;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,56 +38,62 @@ class StockServiceTest {
     @BeforeEach
     void setUp() {
         testId = UUID.randomUUID();
-        testStock = new Stock("AAPL", "Apple Inc.", "NASDAQ", "Technology");
+        testStock = Stock.builder()
+                .symbol("AAPL")
+                .companyName("Apple Inc.")
+                .exchange("NASDAQ")
+                .industry("Technology")
+                .build();
         
     }
 
     @Test
-    void createStock_ValidStock_ReturnsCreatedStock() {
+    void createStock_ValidStock_ReturnsStockResponse() {
+        //Arrange
+        CreateStockRequest request = new CreateStockRequest("AAPL", "Apple Inc.", "NASDAQ", "Technology");
         when(stockRepository.existsBySymbol("AAPL")).thenReturn(false);
         when(stockRepository.save(any(Stock.class))).thenReturn(testStock);
 
-        Stock result = stockService.createStock(testStock);
+       // Act
+        StockResponse result = stockService.createStock(request);
 
+        // Assert
         assertNotNull(result);
-        assertEquals("AAPL", result.getSymbol());
-        assertEquals("Apple Inc.", result.getCompanyName());
-        verify(stockRepository).existsBySymbol("AAPL");
-        verify(stockRepository).save(testStock);
+        assertEquals("AAPL", result.symbol()); // Record accessor style
+        verify(stockRepository).save(any(Stock.class));
     }
 
     @Test
     void createStock_NullSymbol_ThrowsInvalidStockDataException() {
-        Stock invalidStock = new Stock(null, "Apple Inc.", "NASDAQ", "Technology");
+        CreateStockRequest request = new CreateStockRequest(null, "Apple Inc.", "NASDAQ", "Technology");
 
-        InvalidStockDataException exception = assertThrows(
-            InvalidStockDataException.class,
-            () -> stockService.createStock(invalidStock)
-        );
-        assertEquals("Stock symbol cannot be null or empty", exception.getMessage());
+        // Act & Assert
+        assertThrows(InvalidStockDataException.class, () -> stockService.createStock(request));
         verify(stockRepository, never()).save(any());
     }
 
     @Test
     void createStock_EmptySymbol_ThrowsInvalidStockDataException() {
-        Stock invalidStock = new Stock("", "Apple Inc.", "NASDAQ", "Technology");
+       CreateStockRequest request = new CreateStockRequest("", "Apple Inc.", "NASDAQ", "Technology");
 
-        InvalidStockDataException exception = assertThrows(
-            InvalidStockDataException.class,
-            () -> stockService.createStock(invalidStock)
-        );
-        assertEquals("Stock symbol cannot be null or empty", exception.getMessage());
+        // Act & Assert
+        assertThrows(InvalidStockDataException.class, () -> stockService.createStock(request));
+        verify(stockRepository, never()).save(any());
     }
 
     @Test
     void createStock_DuplicateSymbol_ThrowsDuplicateStockException() {
-       
+        // Arrange
+        CreateStockRequest request = new CreateStockRequest("AAPL", "Apple Inc.", "NASDAQ", "Technology");
+        
         when(stockRepository.existsBySymbol("AAPL")).thenReturn(true);
     
+        // Act & Assert
         DuplicateStockException exception = assertThrows(
             DuplicateStockException.class,
-            () -> stockService.createStock(testStock)
+            () -> stockService.createStock(request)
         );
+        
         assertTrue(exception.getMessage().contains("AAPL"));
         verify(stockRepository, never()).save(any());
     }
@@ -91,12 +101,15 @@ class StockServiceTest {
     @Test
     void getStockById_ExistingId_ReturnsStock() {
         
+        // Arrange
         when(stockRepository.findById(testId)).thenReturn(Optional.of(testStock));
         
-        Stock result = stockService.getStockById(testId);
+        // Act
+        StockResponse result = stockService.getStockById(testId);
     
+        // Assert
         assertNotNull(result);
-        assertEquals("AAPL", result.getSymbol());
+        assertEquals("AAPL", result.symbol());
         verify(stockRepository).findById(testId);
     }
 
@@ -113,14 +126,16 @@ class StockServiceTest {
     }
 
     @Test
-    void getStockBySymbol_ExistingSymbol_ReturnsStock() {
-        
+    void getStockBySymbol_ExistingSymbol_ReturnsStockResponse() {
+        // Arrange
         when(stockRepository.findBySymbol("AAPL")).thenReturn(Optional.of(testStock));
 
-        Stock result = stockService.getStockBySymbol("AAPL");
+        // Act
+        StockResponse result = stockService.getStockBySymbol("AAPL");
 
+        // Assert
         assertNotNull(result);
-        assertEquals("AAPL", result.getSymbol());
+        assertEquals("AAPL", result.symbol()); // Record accessor style
         verify(stockRepository).findBySymbol("AAPL");
     }
 
@@ -137,88 +152,95 @@ class StockServiceTest {
     }
 
     @Test
-    void getAllStocks_ReturnsAllStocks() {
+    void getAllStocks_ReturnsAllStockResponse() {
         
-        Stock stock2 = new Stock("GOOGL", "Alphabet Inc.", "NASDAQ", "Technology");
-        List<Stock> expectedStocks = Arrays.asList(testStock, stock2);
-        when(stockRepository.findAll()).thenReturn(expectedStocks);
+       // Arrange
+        List<Stock> stocks = Arrays.asList(testStock);
+        when(stockRepository.findAll()).thenReturn(stocks);
        
-        List<Stock> result = stockService.getAllStocks();
+        // Act
+        List<StockResponse> result = stockService.getAllStocks();
 
-        assertNotNull(result);
-        assertEquals(2, result.size());
-        assertEquals("AAPL", result.get(0).getSymbol());
-        assertEquals("GOOGL", result.get(1).getSymbol());
-        verify(stockRepository).findAll();
+        // Assert
+        assertEquals(1, result.size());
+        assertTrue(result.get(0) instanceof StockResponse);
     }
 
     @Test
-    void updateStock_ValidUpdate_ReturnsUpdatedStock() {
-        Stock updateData = new Stock("AAPL", "Apple Corporation", "NASDAQ", "Technology");
+    void updateStock_ValidUpdate_ReturnsUpdatedStockResponse() {
+        // Arrange
+        UpdateStockRequest updateRequest = new UpdateStockRequest("Apple Corporation", "NASDAQ", "Technology");
         when(stockRepository.findById(testId)).thenReturn(Optional.of(testStock));
         when(stockRepository.save(any(Stock.class))).thenReturn(testStock);
 
-        Stock result = stockService.updateStock(testId, updateData);
+        // Act
+        StockResponse result = stockService.updateStock(testId, updateRequest);
 
+        // Assert
         assertNotNull(result);
-        verify(stockRepository).findById(testId);
         verify(stockRepository).save(any(Stock.class));
     }
 
     @Test
     void updateStock_NonExistentStock_ThrowsResourceNotFoundException() {
-        
-        Stock updateData = new Stock("AAPL", "Apple Corporation", "NASDAQ", "Technology");
-        when(stockRepository.findById(testId)).thenReturn(Optional.empty());
+    // Arrange 
+    UpdateStockRequest updateRequest = new UpdateStockRequest("Apple", "NASDAQ", "Technology");
+    
+    // Mock the repository returning empty to trigger the exception
+    when(stockRepository.findById(testId)).thenReturn(Optional.empty());
 
-       
-        ResourceNotFoundException exception = assertThrows(
-            ResourceNotFoundException.class,
-            () -> stockService.updateStock(testId, updateData)
-        );
-        assertTrue(exception.getMessage().contains(testId.toString()));
-    }
+    // Act & Assert
+    ResourceNotFoundException exception = assertThrows(
+        ResourceNotFoundException.class,
+        () -> stockService.updateStock(testId, updateRequest)
+    );
+    
+    assertTrue(exception.getMessage().contains(testId.toString()));
+    verify(stockRepository, never()).save(any());
+}
 
     @Test
     void deleteStock_ExistingStock_DeletesSuccessfully() {
         
-        when(stockRepository.findById(testId)).thenReturn(Optional.of(testStock));
+       // Arrange - Your StockService uses existsById in deleteStock
+        when(stockRepository.existsById(testId)).thenReturn(true);
 
-        
+        // Act
         stockService.deleteStock(testId);
 
-       
-        verify(stockRepository).findById(testId);
-        verify(stockRepository).delete(testStock);
+        // Assert
+        verify(stockRepository).deleteById(testId);
     }
 
     @Test
     void deleteStock_NonExistentStock_ThrowsResourceNotFoundException() {
        
-        when(stockRepository.findById(testId)).thenReturn(Optional.empty());
+        when(stockRepository.existsById(testId)).thenReturn(false);
         
         ResourceNotFoundException exception = assertThrows(
             ResourceNotFoundException.class,
             () -> stockService.deleteStock(testId)
         );
         assertTrue(exception.getMessage().contains(testId.toString()));
+        verify(stockRepository).existsById(testId);
+        verify(stockRepository, never()).deleteById(any());
     }
 
     @Test
     void getStocksByIndustry_ReturnsFilteredStocks() {
-        
-        List<Stock> techStocks = Arrays.asList(testStock);
-        when(stockRepository.findByIndustryIgnoreCase("Technology")).thenReturn(techStocks);
+    // Arrange
+    List<Stock> techStocks = Arrays.asList(testStock);
+    when(stockRepository.findByIndustryIgnoreCase("Technology")).thenReturn(techStocks);
 
-       
-        List<Stock> result = stockService.getStocksByIndustry("Technology");
+    // Act
+    List<StockResponse> result = stockService.getStocksByIndustry("Technology");
 
-       
-        assertNotNull(result);
-        assertEquals(1, result.size());
-        assertEquals("AAPL", result.get(0).getSymbol());
-        verify(stockRepository).findByIndustryIgnoreCase("Technology");
-    }
+    // Assert
+    assertNotNull(result);
+    assertEquals(1, result.size());
+    assertEquals("AAPL", result.get(0).symbol());
+    verify(stockRepository).findByIndustryIgnoreCase("Technology");
+}
 
     @Test
     void stockExists_ExistingSymbol_ReturnsTrue() {

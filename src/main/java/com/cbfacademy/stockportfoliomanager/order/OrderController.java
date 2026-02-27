@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import com.cbfacademy.stockportfoliomanager.order.dto.CreateOrderRequest;
 import com.cbfacademy.stockportfoliomanager.order.dto.OrderResponse;
 import com.cbfacademy.stockportfoliomanager.order.dto.PortfolioItemResponse;
+import com.cbfacademy.stockportfoliomanager.order.dto.PortfolioResponse;
 
 import java.util.List;
 import java.util.UUID;
@@ -127,13 +128,13 @@ public class OrderController {
     
     @Operation(
         summary = "Get current portfolio",
-        description = "Retrieve the current portfolio showing all stock positions"
+        description = "Retrieve the current portfolio showing all stock positions and total market value"
     )
     @ApiResponses(value = {
         @ApiResponse(
             responseCode = "200", 
             description = "Portfolio retrieved successfully",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = PortfolioItem.class))
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = PortfolioResponse.class))
         ),
         @ApiResponse(
             responseCode = "500", 
@@ -142,8 +143,8 @@ public class OrderController {
         )
     })
     @GetMapping("/portfolio")
-    public ResponseEntity<List<PortfolioItemResponse>> getCurrentPortfolio() {
-        List<PortfolioItemResponse> portfolio = orderService.getCurrentPortfolio();
-        return ResponseEntity.ok(portfolio);
-    }
+    public ResponseEntity<PortfolioResponse> getCurrentPortfolio() {
+    PortfolioResponse portfolio = orderService.getCurrentPortfolio();
+    return ResponseEntity.ok(portfolio);
+}
 }

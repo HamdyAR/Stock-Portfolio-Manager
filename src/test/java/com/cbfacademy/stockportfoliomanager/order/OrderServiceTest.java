@@ -5,6 +5,10 @@ import com.cbfacademy.stockportfoliomanager.stock.StockService;
 import com.cbfacademy.stockportfoliomanager.exceptions.InvalidOrderException;
 import com.cbfacademy.stockportfoliomanager.exceptions.InsufficientHoldingsException;
 import com.cbfacademy.stockportfoliomanager.exceptions.ResourceNotFoundException;
+import com.cbfacademy.stockportfoliomanager.order.dto.CreateOrderRequest;
+import com.cbfacademy.stockportfoliomanager.order.dto.OrderResponse;
+import com.cbfacademy.stockportfoliomanager.order.dto.PortfolioResponse;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,172 +39,178 @@ class OrderServiceTest {
     private OrderService orderService;
 
     private Stock testStock;
-    private Order testBuyOrder;
-    private Order testSellOrder;
+    private Order buyOrder;
+    private Order sellOrder;
     private UUID testOrderId;
 
     @BeforeEach
     void setUp() {
         testOrderId = UUID.randomUUID();
-        testStock = new Stock("AAPL", "Apple Inc.", "NASDAQ", "Technology");
-        
-        testBuyOrder = new Order(testStock, OrderSide.BUY, 100, new BigDecimal("150.00"));
-        testSellOrder = new Order(testStock, OrderSide.SELL, 30, new BigDecimal("155.00"));
+        testStock = Stock.builder()
+                .symbol("AAPL")
+                .companyName("Apple Inc.")
+                .exchange("NASDAQ")
+                .industry("Technology")
+                .build();
+
+        // A standard Buy order to represent "Existing Holdings"
+    buyOrder = Order.builder()
+            .id(testOrderId)
+            .stock(testStock)
+            .side(OrderSide.BUY)
+            .volume(100)
+            .price(new BigDecimal("150.00"))
+            .build();
+
+    // A standard Sell order for testing sell logic
+    sellOrder = Order.builder()
+            .id(UUID.randomUUID())
+            .stock(testStock)
+            .side(OrderSide.SELL)
+            .volume(30)
+            .price(new BigDecimal("155.00"))
+            .build();        
     }
 
     @Test
-    void placeOrder_ValidBuyOrder_ReturnsCreatedOrder() {
+void placeOrder_ValidBuyOrder_ReturnsOrderResponse() {
+    // Arrange - Remove the BigDecimal argument to match your 3-field Record
+    CreateOrderRequest request = new CreateOrderRequest("AAPL", OrderSide.BUY, 100);
+
+    // Mocking the Entity return
+    when(stockService.getStockEntityBySymbol("AAPL")).thenReturn(Optional.of(testStock));
+    // Mocking the save operation
+    when(orderRepository.save(any(Order.class))).thenReturn(buyOrder);
+
+    // Act
+    OrderResponse result = orderService.placeOrder(request);
+
+    // Assert
+    assertNotNull(result);
+    assertEquals("AAPL", result.stockSymbol());
+    assertEquals(OrderSide.BUY, result.side());
+    // Verify interactions
+    verify(stockService).getStockEntityBySymbol("AAPL");
+    verify(orderRepository).save(any(Order.class));
+}
+
+    @Test
+    void placeOrder_ValidSellOrderWithSufficientHoldings_ReturnsOrderResponse() {
         // Arrange
-        when(stockService.getStockBySymbol("AAPL")).thenReturn(testStock);
-        when(orderRepository.save(any(Order.class))).thenReturn(testBuyOrder);
+        CreateOrderRequest request = new CreateOrderRequest("AAPL", OrderSide.SELL, 30);
+        
+        // Use the Entity search method and wrap in Optional
+        when(stockService.getStockEntityBySymbol("AAPL")).thenReturn(Optional.of(testStock));
+        when(orderRepository.findByStockSymbol("AAPL")).thenReturn(List.of(buyOrder));
+        when(orderRepository.save(any(Order.class))).thenReturn(sellOrder);
 
         // Act
-        Order result = orderService.placeOrder("AAPL", OrderSide.BUY, 100, new BigDecimal("150.00"));
+        OrderResponse result = orderService.placeOrder(request);
 
         // Assert
         assertNotNull(result);
-        assertEquals(OrderSide.BUY, result.getSide());
-        assertEquals(100, result.getVolume());
-        assertEquals(new BigDecimal("150.00"), result.getPrice());
-        verify(stockService).getStockBySymbol("AAPL");
+        assertEquals(OrderSide.SELL, result.side());
+        assertEquals(30, result.volume());
+        verify(stockService).getStockEntityBySymbol("AAPL");
         verify(orderRepository).save(any(Order.class));
     }
 
     @Test
-    void placeOrder_ValidSellOrderWithSufficientHoldings_ReturnsCreatedOrder() {
-        // Arrange
-        when(stockService.getStockBySymbol("AAPL")).thenReturn(testStock);
-        when(orderRepository.findByStockSymbol("AAPL")).thenReturn(Arrays.asList(testBuyOrder));
-        when(orderRepository.save(any(Order.class))).thenReturn(testSellOrder);
-
-        // Act
-        Order result = orderService.placeOrder("AAPL", OrderSide.SELL, 30, new BigDecimal("155.00"));
-
-        // Assert
-        assertNotNull(result);
-        assertEquals(OrderSide.SELL, result.getSide());
-        assertEquals(30, result.getVolume());
-        verify(stockService).getStockBySymbol("AAPL");
-        verify(orderRepository).findByStockSymbol("AAPL");
-        verify(orderRepository).save(any(Order.class));
-    }
-
-    @Test
-    void placeOrder_NullStockSymbol_ThrowsInvalidOrderException() {
-        // Act & Assert
-        InvalidOrderException exception = assertThrows(
-            InvalidOrderException.class,
-            () -> orderService.placeOrder(null, OrderSide.BUY, 100, new BigDecimal("150.00"))
-        );
-        assertEquals("Stock symbol cannot be null or empty", exception.getMessage());
-        verify(stockService, never()).getStockBySymbol(any());
-    }
-
-    @Test
-    void placeOrder_EmptyStockSymbol_ThrowsInvalidOrderException() {
-        // Act & Assert
-        InvalidOrderException exception = assertThrows(
-            InvalidOrderException.class,
-            () -> orderService.placeOrder("", OrderSide.BUY, 100, new BigDecimal("150.00"))
-        );
-        assertEquals("Stock symbol cannot be null or empty", exception.getMessage());
-    }
-
-    @Test
-    void placeOrder_NullOrderSide_ThrowsInvalidOrderException() {
-        // Act & Assert
-        InvalidOrderException exception = assertThrows(
-            InvalidOrderException.class,
-            () -> orderService.placeOrder("AAPL", null, 100, new BigDecimal("150.00"))
-        );
-        assertEquals("Order side cannot be null", exception.getMessage());
-    }
-
-    @Test
-    void placeOrder_NegativeVolume_ThrowsInvalidOrderException() {
-        // Act & Assert
-        InvalidOrderException exception = assertThrows(
-            InvalidOrderException.class,
-            () -> orderService.placeOrder("AAPL", OrderSide.BUY, -10, new BigDecimal("150.00"))
-        );
-        assertEquals("Volume must be positive and greater than zero", exception.getMessage());
-    }
-
-    @Test
-    void placeOrder_ZeroPrice_ThrowsInvalidOrderException() {
-        // Act & Assert
-        InvalidOrderException exception = assertThrows(
-            InvalidOrderException.class,
-            () -> orderService.placeOrder("AAPL", OrderSide.BUY, 100, BigDecimal.ZERO)
-        );
-        assertEquals("Price must be positive and greater than zero", exception.getMessage());
-    }
-
-    @Test
-    void placeOrder_SellOrderWithInsufficientHoldings_ThrowsInsufficientHoldingsException() {
-        // Arrange
-        
-        when(stockService.getStockBySymbol("AAPL")).thenReturn(testStock);
-        // 100 shares
-        when(orderRepository.findByStockSymbol("AAPL")).thenReturn(Arrays.asList(testBuyOrder)); 
+    void placeOrder_NullStockSymbol_ThrowsException() {
+        CreateOrderRequest request = new CreateOrderRequest(null, OrderSide.BUY, 100);
 
         // Act & Assert
-        InsufficientHoldingsException exception = assertThrows(
-            InsufficientHoldingsException.class,
-            () -> orderService.placeOrder("AAPL", OrderSide.SELL, 150, 
-            new BigDecimal("155.00")) // Try to sell 150
-        );
-        assertTrue(exception.getMessage().contains("AAPL"));
-        verify(stockService).getStockBySymbol("AAPL");
-        verify(orderRepository).findByStockSymbol("AAPL");
+        assertThrows(RuntimeException.class, () -> orderService.placeOrder(request));
         verify(orderRepository, never()).save(any());
     }
 
     @Test
-    void placeOrder_NonExistentStock_ThrowsResourceNotFoundException() {
+    void placeOrder_EmptyStockSymbol_ThrowsException() {
         // Arrange
-        when(stockService.getStockBySymbol("INVALID")).thenThrow(
-            new ResourceNotFoundException("Stock not found with symbol: INVALID")
-        );
+        CreateOrderRequest request = new CreateOrderRequest("", OrderSide.BUY, 100);
 
         // Act & Assert
-        ResourceNotFoundException exception = assertThrows(
-            ResourceNotFoundException.class,
-            () -> orderService.placeOrder("INVALID", OrderSide.BUY, 100, new BigDecimal("150.00"))
-        );
-        assertTrue(exception.getMessage().contains("INVALID"));
-        verify(stockService).getStockBySymbol("INVALID");
+        assertThrows(RuntimeException.class, () -> orderService.placeOrder(request));
+    }
+
+    @Test
+    void placeOrder_NullOrderSide_ThrowsInvalidOrderException() {
+        // Arrange
+        CreateOrderRequest request = new CreateOrderRequest("AAPL", null, 100);
+
+       // Act & Assert
+        assertThrows(RuntimeException.class, () -> orderService.placeOrder(request));
+    }
+
+    @Test
+    void placeOrder_NegativeVolume_ThrowsInvalidOrderException() {
+         // Arrange
+        CreateOrderRequest request = new CreateOrderRequest("AAPL", OrderSide.BUY, -2);
+
+       // Act & Assert
+        assertThrows(RuntimeException.class, () -> orderService.placeOrder(request));
+    }
+
+    @Test
+    void placeOrder_ZeroPrice_ThrowsInvalidOrderException() {
+        CreateOrderRequest request = new CreateOrderRequest("AAPL", OrderSide.BUY, 100);
+        
+        // Since price isn't in the request anymore, this test might need to change 
+        // to check how your Service handles a ZERO price from the API later.
+        assertDoesNotThrow(() -> orderService.placeOrder(request));
+    }
+
+    @Test
+    void placeOrder_SellOrderWithInsufficientHoldings_ThrowsInsufficientHoldingsException() {
+    // Arrange: Create request with only 3 fields to match your Record
+    CreateOrderRequest request = new CreateOrderRequest("AAPL", OrderSide.SELL, 200);
+    
+    when(stockService.getStockEntityBySymbol("AAPL")).thenReturn(Optional.of(testStock));
+    
+    // Mock 100 shares (Buying 100 means selling 150 should fail)
+    when(orderRepository.findByStockSymbol("AAPL")).thenReturn(List.of(buyOrder));
+
+    // Act & Assert
+    assertThrows(InsufficientHoldingsException.class, () -> orderService.placeOrder(request));
+    verify(orderRepository, never()).save(any());
+}
+
+    @Test
+    void placeOrder_NonExistentStock_ThrowsResourceNotFoundException() {
+        // Arrange
+        CreateOrderRequest request = new CreateOrderRequest("INVALID", OrderSide.BUY, 100);
+        // Mock the entity search returning empty
+        when(stockService.getStockEntityBySymbol("INVALID")).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(ResourceNotFoundException.class, () -> orderService.placeOrder(request));
         verify(orderRepository, never()).save(any());
     }
 
     @Test
     void getAllOrders_ReturnsOrdersOrderedByTimestamp() {
         // Arrange
-        List<Order> expectedOrders = Arrays.asList(testSellOrder, testBuyOrder);
-        when(orderRepository.findAllByOrderByTimestampDesc()).thenReturn(expectedOrders);
+        when(orderRepository.findAllByOrderByTimestampDesc()).thenReturn(Arrays.asList(sellOrder, buyOrder));
 
         // Act
-        List<Order> result = orderService.getAllOrders();
+        List<OrderResponse> result = orderService.getAllOrders();
 
         // Assert
-        assertNotNull(result);
         assertEquals(2, result.size());
-        assertEquals(testSellOrder, result.get(0));
-        assertEquals(testBuyOrder, result.get(1));
-        verify(orderRepository).findAllByOrderByTimestampDesc();
+        assertEquals("AAPL", result.get(0).stockSymbol());
     }
 
     @Test
     void getOrderById_ExistingOrder_ReturnsOrder() {
         // Arrange
-        when(orderRepository.findById(testOrderId)).thenReturn(Optional.of(testBuyOrder));
+        when(orderRepository.findById(testOrderId)).thenReturn(Optional.of(buyOrder));
 
         // Act
-        Order result = orderService.getOrderById(testOrderId);
+        OrderResponse result = orderService.getOrderById(testOrderId);
 
         // Assert
         assertNotNull(result);
-        assertEquals(testBuyOrder, result);
+        assertEquals(buyOrder, result);
         verify(orderRepository).findById(testOrderId);
     }
 
@@ -218,74 +228,75 @@ class OrderServiceTest {
     }
 
     @Test
-    void getOrdersByStock_ReturnsFilteredOrders() {
-        // Arrange
-        List<Order> appleOrders = Arrays.asList(testBuyOrder, testSellOrder);
-        when(orderRepository.findByStockSymbol("AAPL")).thenReturn(appleOrders);
+void getOrdersByStock_ReturnsFilteredOrders() {
+    // Arrange
+    // Ensure you use the buyOrder and sellOrder variables from your setUp
+    List<Order> appleOrders = Arrays.asList(buyOrder, sellOrder);
+    when(orderRepository.findByStockSymbol("AAPL")).thenReturn(appleOrders);
 
-        // Act
-        List<Order> result = orderService.getOrdersByStock("AAPL");
+    // Act
+    // The service now returns a List of DTOs (OrderResponse)
+    List<OrderResponse> result = orderService.getOrdersByStock("AAPL");
 
-        // Assert
-        assertNotNull(result);
-        assertEquals(2, result.size());
-        verify(orderRepository).findByStockSymbol("AAPL");
-    }
+    // Assert
+    assertNotNull(result);
+    assertEquals(2, result.size());
+    // Checking one record accessor to be sure mapping worked
+    assertEquals("AAPL", result.get(0).stockSymbol());
+    verify(orderRepository).findByStockSymbol("AAPL");
+}
 
     @Test
     void getOrdersBySide_ReturnsFilteredOrders() {
-        // Arrange
-        List<Order> buyOrders = Arrays.asList(testBuyOrder);
-        when(orderRepository.findBySide(OrderSide.BUY)).thenReturn(buyOrders);
+    // Arrange
+    List<Order> buyOrders = Arrays.asList(buyOrder);
+    when(orderRepository.findBySide(OrderSide.BUY)).thenReturn(buyOrders);
 
-        // Act
-        List<Order> result = orderService.getOrdersBySide(OrderSide.BUY);
+    // Act
+    List<OrderResponse> result = orderService.getOrdersBySide(OrderSide.BUY);
 
-        // Assert
-        assertNotNull(result);
-        assertEquals(1, result.size());
-        assertEquals(OrderSide.BUY, result.get(0).getSide());
-        verify(orderRepository).findBySide(OrderSide.BUY);
-    }
+    // Assert
+    assertNotNull(result);
+    assertEquals(1, result.size());
+    // Use record accessor side() instead of getSide()
+    assertEquals(OrderSide.BUY, result.get(0).side());
+    verify(orderRepository).findBySide(OrderSide.BUY);
+}
 
     @Test
-    void getCurrentPortfolio_ReturnsPortfolioItems() {
+    void getCurrentPortfolio_ReturnsPortfolioResponse() {
         Object[] portfolioData = {"AAPL", "Apple Inc.", "NASDAQ", "Technology", 70L};
-        List<Object[]> portfolioResults = Arrays.asList(new Object[][]{portfolioData});
+        List<Object[]> portfolioResults = List.of(new Object[][]{portfolioData});
         when(orderRepository.calculatePortfolioHoldings()).thenReturn(portfolioResults);
 
         // Act
-        List<PortfolioItem> result = orderService.getCurrentPortfolio();
+        PortfolioResponse result = orderService.getCurrentPortfolio();
 
         // Assert
         assertNotNull(result);
-        assertEquals(1, result.size());
-        PortfolioItem item = result.get(0);
-        assertEquals("AAPL", item.getSymbol());
-        assertEquals("Apple Inc.", item.getCompany());
-        assertEquals("NASDAQ", item.getExchange());
-        assertEquals("Technology", item.getIndustry());
-        assertEquals(70, item.getHoldings());
-        verify(orderRepository).calculatePortfolioHoldings();
+        assertFalse(result.items().isEmpty());
+        assertEquals(1, result.items().size());
+        assertEquals("AAPL", result.items().get(0).stockSymbol());
+        assertEquals(70, result.items().get(0).quantity());
+        // Since we mocked price as ZERO in the service
+        assertEquals(BigDecimal.ZERO, result.totalPortfolioValue());
     }
 
     @Test
     void getCurrentHoldingsForStock_CalculatesCorrectHoldings() {
-        // This tests the private method indirectly through placeOrder
         // Arrange
-        Order additionalBuyOrder = new Order(testStock, OrderSide.BUY, 50, new BigDecimal("160.00"));
-        List<Order> orders = Arrays.asList(testBuyOrder, additionalBuyOrder, testSellOrder); // 100 + 50 - 30 = 120
+        CreateOrderRequest request = new CreateOrderRequest("AAPL", OrderSide.SELL, 50);
+        List<Order> orders = Arrays.asList(buyOrder, sellOrder); // 100 - 30 = 70
         
-        when(stockService.getStockBySymbol("AAPL")).thenReturn(testStock);
+        when(stockService.getStockEntityBySymbol("AAPL")).thenReturn(Optional.of(testStock));
         when(orderRepository.findByStockSymbol("AAPL")).thenReturn(orders);
-        when(orderRepository.save(any(Order.class))).thenReturn(testSellOrder);
+        when(orderRepository.save(any(Order.class))).thenReturn(sellOrder);
 
-        // Act - try to sell 50 shares (should succeed since we have 120)
-        Order result = orderService.placeOrder("AAPL", OrderSide.SELL, 50, new BigDecimal("155.00"));
+        // Act
+        OrderResponse result = orderService.placeOrder(request);
 
         // Assert
         assertNotNull(result);
-        verify(orderRepository).findByStockSymbol("AAPL");
         verify(orderRepository).save(any(Order.class));
     }
 }

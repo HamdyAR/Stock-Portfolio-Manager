@@ -9,6 +9,7 @@ import com.cbfacademy.stockportfoliomanager.exceptions.ResourceNotFoundException
 import com.cbfacademy.stockportfoliomanager.order.dto.CreateOrderRequest;
 import com.cbfacademy.stockportfoliomanager.order.dto.OrderResponse;
 import com.cbfacademy.stockportfoliomanager.order.dto.PortfolioItemResponse;
+import com.cbfacademy.stockportfoliomanager.order.dto.PortfolioResponse;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,34 +37,31 @@ public class OrderService {
     }
     
     public OrderResponse placeOrder(CreateOrderRequest request) {
+    String symbol = request.stockSymbol().trim().toUpperCase();
 
-        String symbol = request.stockSymbol().trim().toUpperCase();
-
-        Stock stock = stockService.getStockEntityBySymbol(symbol)
-            .orElseThrow(() -> new ResourceNotFoundException("Stock not found with symbol: " + symbol));
-        
-        
-        // For sell orders, check if user has sufficient holdings
-        if (request.side() == OrderSide.SELL) {
-            int currentHoldings = getCurrentHoldingsForStock(symbol);
-            if (currentHoldings < request.volume()) {
-                throw new InsufficientHoldingsException(symbol, request.volume(), currentHoldings);
-            }
+    Stock stock = stockService.getStockEntityBySymbol(symbol)
+        .orElseThrow(() -> new ResourceNotFoundException("Stock not found: " + symbol));
+    
+    if (request.side() == OrderSide.SELL) {
+        int currentHoldings = getCurrentHoldingsForStock(symbol);
+        if (currentHoldings < request.volume()) {
+            throw new InsufficientHoldingsException(symbol, request.volume(), currentHoldings);
         }
-        
-        // Create and save the order
-        BigDecimal executedPrice = BigDecimal.ZERO;
-
-        Order order = Order.builder()
-                .stock(stock)
-                .side(request.side())
-                .volume(request.volume())
-                .price(executedPrice)
-                .build();
-
-        Order saved = orderRepository.save(order);
-        return toResponse(saved);
     }
+    
+    // Defaulting to ZERO until Step 1 of Alpha Vantage integration is complete
+    BigDecimal executedPrice = BigDecimal.ZERO; 
+
+    Order order = Order.builder()
+            .stock(stock)
+            .side(request.side())
+            .volume(request.volume())
+            .price(executedPrice) 
+            .build();
+
+    Order saved = orderRepository.save(order);
+    return toResponse(saved);
+}
     
     public List<OrderResponse> getAllOrders() {
         logger.info("Retrieving all orders");
@@ -90,27 +88,19 @@ public class OrderService {
     }
     
     // Portfolio calculation methods
-    public List<PortfolioItemResponse> getCurrentPortfolio() {
-    List<Object[]> results = orderRepository.calculatePortfolioHoldings();
-    
-    return results.stream()
-            .map(result -> {
-                // For now, we set price and market value to ZERO 
-                // until we implement the Alpha Vantage Client
-                BigDecimal mockPrice = BigDecimal.ZERO; 
-                BigDecimal mockMarketValue = BigDecimal.ZERO;
-
-                return new PortfolioItemResponse(
-                    (String) result[0], // symbol
-                    (String) result[1], // companyName
-                    (String) result[2], // exchange
-                    (String) result[3], // industry
-                    ((Long) result[4]).intValue(), // quantity
-                    mockPrice,
-                    mockMarketValue
-                );
-            })
+    public PortfolioResponse getCurrentPortfolio() {
+    List<PortfolioItemResponse> items = orderRepository.calculatePortfolioHoldings().stream()
+            .map(result -> new PortfolioItemResponse(
+                (String) result[0], (String) result[1], (String) result[2], 
+                (String) result[3], ((Long) result[4]).intValue(), 
+                BigDecimal.ZERO, BigDecimal.ZERO))
             .toList();
+
+    BigDecimal totalValue = items.stream()
+            .map(PortfolioItemResponse::marketValue)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+    return new PortfolioResponse(items, totalValue);
 }
     
     private Integer getCurrentHoldingsForStock(String stockSymbol) {
