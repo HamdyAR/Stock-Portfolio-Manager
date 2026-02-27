@@ -2,8 +2,9 @@ package com.cbfacademy.stockportfoliomanager.order;
 
 import com.cbfacademy.stockportfoliomanager.stock.Stock;
 import com.cbfacademy.stockportfoliomanager.stock.StockService;
-import com.cbfacademy.stockportfoliomanager.exceptions.InvalidOrderException;
+import com.cbfacademy.stockportfoliomanager.client.AlphaVantageClient;
 import com.cbfacademy.stockportfoliomanager.exceptions.InsufficientHoldingsException;
+import com.cbfacademy.stockportfoliomanager.exceptions.InvalidOrderException;
 import com.cbfacademy.stockportfoliomanager.exceptions.ResourceNotFoundException;
 import com.cbfacademy.stockportfoliomanager.order.dto.CreateOrderRequest;
 import com.cbfacademy.stockportfoliomanager.order.dto.OrderResponse;
@@ -24,6 +25,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,6 +36,9 @@ class OrderServiceTest {
 
     @Mock
     private StockService stockService;
+
+    @Mock
+    private AlphaVantageClient alphaVantageClient;
 
     @InjectMocks
     private OrderService orderService;
@@ -73,12 +78,16 @@ class OrderServiceTest {
     }
 
     @Test
-void placeOrder_ValidBuyOrder_ReturnsOrderResponse() {
+    void placeOrder_ValidBuyOrder_ReturnsOrderResponse() {
     // Arrange - Remove the BigDecimal argument to match your 3-field Record
     CreateOrderRequest request = new CreateOrderRequest("AAPL", OrderSide.BUY, 100);
+    BigDecimal marketPrice = new BigDecimal("150.00");
 
     // Mocking the Entity return
     when(stockService.getStockEntityBySymbol("AAPL")).thenReturn(Optional.of(testStock));
+    
+    when(alphaVantageClient.getStockPrice("AAPL")).thenReturn(marketPrice);
+
     // Mocking the save operation
     when(orderRepository.save(any(Order.class))).thenReturn(buyOrder);
 
@@ -101,8 +110,10 @@ void placeOrder_ValidBuyOrder_ReturnsOrderResponse() {
         
         // Use the Entity search method and wrap in Optional
         when(stockService.getStockEntityBySymbol("AAPL")).thenReturn(Optional.of(testStock));
-        when(orderRepository.findByStockSymbol("AAPL")).thenReturn(List.of(buyOrder));
+        when(orderRepository.findByStock_Symbol("AAPL")).thenReturn(List.of(buyOrder));
         when(orderRepository.save(any(Order.class))).thenReturn(sellOrder);
+
+        when(alphaVantageClient.getStockPrice("AAPL")).thenReturn(new BigDecimal("150.00"));
 
         // Act
         OrderResponse result = orderService.placeOrder(request);
@@ -152,28 +163,54 @@ void placeOrder_ValidBuyOrder_ReturnsOrderResponse() {
     }
 
     @Test
-    void placeOrder_ZeroPrice_ThrowsInvalidOrderException() {
-        CreateOrderRequest request = new CreateOrderRequest("AAPL", OrderSide.BUY, 100);
+    void placeOrder_ValidRequest_ReturnsOrderResponse(){
+        CreateOrderRequest request = new CreateOrderRequest("AAPL", OrderSide.BUY, 20);
+        BigDecimal mockedPrice = new BigDecimal(150.00);
+
+        when(stockService.getStockEntityBySymbol("AAPL")).thenReturn(Optional.of(testStock));
+    
+        // Stub the API call
+        when(alphaVantageClient.getStockPrice("AAPL")).thenReturn(mockedPrice);
         
-        // Since price isn't in the request anymore, this test might need to change 
-        // to check how your Service handles a ZERO price from the API later.
-        assertDoesNotThrow(() -> orderService.placeOrder(request));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        OrderResponse result = orderService.placeOrder(request);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(mockedPrice, result.executedPrice());
+        verify(alphaVantageClient).getStockPrice("AAPL");
+    }
+
+    @Test
+    void placeOrder_ApiFailure_ThrowsInvalidOrderException() {
+    // Arrange
+    CreateOrderRequest request = new CreateOrderRequest("AAPL", OrderSide.BUY, 40);
+    
+    // Ensure the stock is found
+    when(stockService.getStockEntityBySymbol("AAPL")).thenReturn(Optional.of(testStock));
+
+    // Simulate API returning zero or error
+    when(alphaVantageClient.getStockPrice("AAPL")).thenReturn(BigDecimal.ZERO);
+    
+    // Act & Assert
+    assertThrows(InvalidOrderException.class, () -> orderService.placeOrder(request));
     }
 
     @Test
     void placeOrder_SellOrderWithInsufficientHoldings_ThrowsInsufficientHoldingsException() {
-    // Arrange: Create request with only 3 fields to match your Record
     CreateOrderRequest request = new CreateOrderRequest("AAPL", OrderSide.SELL, 200);
     
     when(stockService.getStockEntityBySymbol("AAPL")).thenReturn(Optional.of(testStock));
     
-    // Mock 100 shares (Buying 100 means selling 150 should fail)
-    when(orderRepository.findByStockSymbol("AAPL")).thenReturn(List.of(buyOrder));
+    // Mock 100 shares (Buying 100 means selling 200 should fail)
+    when(orderRepository.findByStock_Symbol("AAPL")).thenReturn(List.of(buyOrder));
 
     // Act & Assert
     assertThrows(InsufficientHoldingsException.class, () -> orderService.placeOrder(request));
-    verify(orderRepository, never()).save(any());
-}
+    verify(orderRepository, never()).save(any());  
+    }
 
     @Test
     void placeOrder_NonExistentStock_ThrowsResourceNotFoundException() {
@@ -201,18 +238,18 @@ void placeOrder_ValidBuyOrder_ReturnsOrderResponse() {
     }
 
     @Test
-    void getOrderById_ExistingOrder_ReturnsOrder() {
-        // Arrange
-        when(orderRepository.findById(testOrderId)).thenReturn(Optional.of(buyOrder));
+    void getOrderById_ExistingOrder_ReturnsOrderResponse() {
+    // Arrange
+    when(orderRepository.findById(testOrderId)).thenReturn(Optional.of(buyOrder));
 
-        // Act
-        OrderResponse result = orderService.getOrderById(testOrderId);
+    // Act
+    OrderResponse result = orderService.getOrderById(testOrderId);
 
-        // Assert
-        assertNotNull(result);
-        assertEquals(buyOrder, result);
-        verify(orderRepository).findById(testOrderId);
-    }
+    // Assert
+    assertNotNull(result);
+    assertEquals(testOrderId, result.id()); // Compare IDs instead of the whole object
+    assertEquals("AAPL", result.stockSymbol());
+}
 
     @Test
     void getOrderById_NonExistentOrder_ThrowsResourceNotFoundException() {
@@ -228,22 +265,19 @@ void placeOrder_ValidBuyOrder_ReturnsOrderResponse() {
     }
 
     @Test
-void getOrdersByStock_ReturnsFilteredOrders() {
+    void getOrdersByStock_ReturnsFilteredOrders() {
     // Arrange
-    // Ensure you use the buyOrder and sellOrder variables from your setUp
     List<Order> appleOrders = Arrays.asList(buyOrder, sellOrder);
-    when(orderRepository.findByStockSymbol("AAPL")).thenReturn(appleOrders);
+    when(orderRepository.findByStock_Symbol("AAPL")).thenReturn(appleOrders);
 
     // Act
-    // The service now returns a List of DTOs (OrderResponse)
     List<OrderResponse> result = orderService.getOrdersByStock("AAPL");
 
     // Assert
     assertNotNull(result);
     assertEquals(2, result.size());
-    // Checking one record accessor to be sure mapping worked
     assertEquals("AAPL", result.get(0).stockSymbol());
-    verify(orderRepository).findByStockSymbol("AAPL");
+    verify(orderRepository).findByStock_Symbol("AAPL");
 }
 
     @Test
@@ -264,23 +298,34 @@ void getOrdersByStock_ReturnsFilteredOrders() {
 }
 
     @Test
-    void getCurrentPortfolio_ReturnsPortfolioResponse() {
-        Object[] portfolioData = {"AAPL", "Apple Inc.", "NASDAQ", "Technology", 70L};
-        List<Object[]> portfolioResults = List.of(new Object[][]{portfolioData});
-        when(orderRepository.calculatePortfolioHoldings()).thenReturn(portfolioResults);
+    void getCurrentPortfolio_ReturnsPortfolioResponseWithRealValues() {
+    // Arrange
+    Object[] portfolioData = {"AAPL", "Apple Inc.", "NASDAQ", "Technology", 70L};
+    List<Object[]> portfolioResults = List.of(new Object[][]{portfolioData});
+    
+    BigDecimal currentPrice = new BigDecimal("150.00");
+    // 70 shares * 150.00 = 10,500.00
+    BigDecimal expectedTotalValue = new BigDecimal("10500.00");
 
-        // Act
-        PortfolioResponse result = orderService.getCurrentPortfolio();
+    when(orderRepository.calculatePortfolioHoldings()).thenReturn(portfolioResults);
+    
+    // Mock the API call for the symbol in the portfolio
+    when(alphaVantageClient.getStockPrice("AAPL")).thenReturn(currentPrice);
 
-        // Assert
-        assertNotNull(result);
-        assertFalse(result.items().isEmpty());
-        assertEquals(1, result.items().size());
-        assertEquals("AAPL", result.items().get(0).stockSymbol());
-        assertEquals(70, result.items().get(0).quantity());
-        // Since we mocked price as ZERO in the service
-        assertEquals(BigDecimal.ZERO, result.totalPortfolioValue());
-    }
+    // Act
+    PortfolioResponse result = orderService.getCurrentPortfolio();
+
+    // Assert
+    assertNotNull(result);
+    assertEquals(1, result.items().size());
+    assertEquals("AAPL", result.items().get(0).stockSymbol());
+    assertEquals(70, result.items().get(0).quantity());
+    
+    // Now we assert the actual calculated value instead of ZERO
+    // Note: Use compareTo for BigDecimal assertions to ignore scale differences
+    assertEquals(0, expectedTotalValue.compareTo(result.totalPortfolioValue()), 
+        "Portfolio value should be quantity * current price");
+}
 
     @Test
     void getCurrentHoldingsForStock_CalculatesCorrectHoldings() {
@@ -289,8 +334,10 @@ void getOrdersByStock_ReturnsFilteredOrders() {
         List<Order> orders = Arrays.asList(buyOrder, sellOrder); // 100 - 30 = 70
         
         when(stockService.getStockEntityBySymbol("AAPL")).thenReturn(Optional.of(testStock));
-        when(orderRepository.findByStockSymbol("AAPL")).thenReturn(orders);
+        when(orderRepository.findByStock_Symbol("AAPL")).thenReturn(orders);
         when(orderRepository.save(any(Order.class))).thenReturn(sellOrder);
+
+        when(alphaVantageClient.getStockPrice(anyString())).thenReturn(new BigDecimal("100.00"));
 
         // Act
         OrderResponse result = orderService.placeOrder(request);

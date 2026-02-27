@@ -13,7 +13,7 @@ public interface OrderRepository extends ListCrudRepository<Order, UUID> {
     
     // Filtering methods
     List<Order> findBySide(OrderSide side);
-    List<Order> findByStockSymbol(String symbol);
+    List<Order> findByStock_Symbol(String symbol);
     
     // Portfolio aggregation custom query with JPQL
     @Query("SELECT o.stock.symbol, o.stock.companyName, o.stock.exchange, o.stock.industry, " +

@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.cbfacademy.stockportfoliomanager.order.OrderServiceTest
+-------------------------------------------------------------------------------
+Tests run: 17, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.128 s -- in com.cbfacademy.stockportfoliomanager.order.OrderServiceTest
