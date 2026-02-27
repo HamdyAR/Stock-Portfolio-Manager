@@ -1,4 +1,7 @@
 /Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/StockPortfolioManagerApplication.java
+/Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/client/AlphaVantageClient.java
+/Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/client/AlphaVantageResponse.java
+/Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/config/RestClientConfig.java
 /Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/config/SwaggerConfig.java
 /Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/exceptions/DuplicateStockException.java
 /Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/exceptions/GlobalExceptionHandler.java
@@ -11,9 +14,8 @@
 /Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/order/OrderRepository.java
 /Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/order/OrderService.java
 /Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/order/OrderSide.java
-/Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/order/PortfolioItem.java
 /Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/order/dto/CreateOrderRequest.java
-/Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/order/dto/CreateOrderResponse.java
+/Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/order/dto/OrderResponse.java
 /Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/order/dto/PortfolioItemResponse.java
 /Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/order/dto/PortfolioResponse.java
 /Users/office/Documents/cbfacademy/Stock-Portfolio-Manager/src/main/java/com/cbfacademy/stockportfoliomanager/stock/Stock.java

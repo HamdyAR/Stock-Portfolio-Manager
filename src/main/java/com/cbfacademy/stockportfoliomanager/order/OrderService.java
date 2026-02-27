@@ -2,8 +2,8 @@ package com.cbfacademy.stockportfoliomanager.order;
 
 import com.cbfacademy.stockportfoliomanager.stock.Stock;
 import com.cbfacademy.stockportfoliomanager.stock.StockService;
-import com.cbfacademy.stockportfoliomanager.stock.dto.StockResponse;
 import com.cbfacademy.stockportfoliomanager.exceptions.InvalidOrderException;
+import com.cbfacademy.stockportfoliomanager.client.AlphaVantageClient;
 import com.cbfacademy.stockportfoliomanager.exceptions.InsufficientHoldingsException;
 import com.cbfacademy.stockportfoliomanager.exceptions.ResourceNotFoundException;
 import com.cbfacademy.stockportfoliomanager.order.dto.CreateOrderRequest;
@@ -15,9 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -30,10 +28,12 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final StockService stockService;
     private static final Logger logger = LoggerFactory.getLogger(OrderService.class);
+    private final AlphaVantageClient alphaVantageClient;
     
-    public OrderService(OrderRepository orderRepository, StockService stockService) {
+    public OrderService(OrderRepository orderRepository, StockService stockService, AlphaVantageClient alphaVantageClient) {
         this.orderRepository = orderRepository;
         this.stockService = stockService;
+        this.alphaVantageClient = alphaVantageClient;
     }
     
     public OrderResponse placeOrder(CreateOrderRequest request) {
@@ -49,8 +49,11 @@ public class OrderService {
         }
     }
     
-    // Defaulting to ZERO until Step 1 of Alpha Vantage integration is complete
-    BigDecimal executedPrice = BigDecimal.ZERO; 
+    BigDecimal executedPrice = alphaVantageClient.getStockPrice(symbol); 
+
+    if(executedPrice.compareTo(BigDecimal.ZERO) <= 0){
+        throw new InvalidOrderException("Could not retrieve market price for" + symbol);
+    }
 
     Order order = Order.builder()
             .stock(stock)
@@ -77,7 +80,7 @@ public class OrderService {
     }
     
     public List<OrderResponse> getOrdersByStock(String symbol) {
-        return orderRepository.findByStockSymbol(symbol).stream()
+        return orderRepository.findByStock_Symbol(symbol).stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -88,23 +91,30 @@ public class OrderService {
     }
     
     // Portfolio calculation methods
-    public PortfolioResponse getCurrentPortfolio() {
-    List<PortfolioItemResponse> items = orderRepository.calculatePortfolioHoldings().stream()
-            .map(result -> new PortfolioItemResponse(
-                (String) result[0], (String) result[1], (String) result[2], 
-                (String) result[3], ((Long) result[4]).intValue(), 
-                BigDecimal.ZERO, BigDecimal.ZERO))
-            .toList();
+   public PortfolioResponse getCurrentPortfolio() {
+    List<Object[]> holdings = orderRepository.calculatePortfolioHoldings();
 
-    BigDecimal totalValue = items.stream()
-            .map(PortfolioItemResponse::marketValue)
+    List<PortfolioItemResponse> items = holdings.stream().map(row -> {
+        String symbol = (String) row[0];
+        String name = (String) row[1];
+        // Cast quantity to int to match your record
+        int quantity = (row[4] instanceof Number n) ? n.intValue() : 0;
+
+        BigDecimal currentPrice = alphaVantageClient.getStockPrice(symbol);
+        BigDecimal marketValue = currentPrice.multiply(BigDecimal.valueOf(quantity));
+
+        return new PortfolioItemResponse(symbol, name, quantity, currentPrice, marketValue);
+    }).toList();
+
+    BigDecimal totalPortfolioValue = items.stream()
+            .map(PortfolioItemResponse::marketValue) // Points to your record's field
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-    return new PortfolioResponse(items, totalValue);
-}
+    return new PortfolioResponse(items, totalPortfolioValue);
+   }
     
     private Integer getCurrentHoldingsForStock(String stockSymbol) {
-        List<Order> orders = orderRepository.findByStockSymbol(stockSymbol);
+        List<Order> orders = orderRepository.findByStock_Symbol(stockSymbol);
         int holdings = 0;
         
         for (Order order : orders) {

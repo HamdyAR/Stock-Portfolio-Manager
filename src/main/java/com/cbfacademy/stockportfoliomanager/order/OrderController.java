@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.*;
 
 import com.cbfacademy.stockportfoliomanager.order.dto.CreateOrderRequest;
 import com.cbfacademy.stockportfoliomanager.order.dto.OrderResponse;
-import com.cbfacademy.stockportfoliomanager.order.dto.PortfolioItemResponse;
 import com.cbfacademy.stockportfoliomanager.order.dto.PortfolioResponse;
 
 import java.util.List;
