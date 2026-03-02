@@ -1,6 +1,7 @@
 package com.cbfacademy.stockportfoliomanager.order;
 
 import com.cbfacademy.stockportfoliomanager.stock.Stock;
+import com.cbfacademy.stockportfoliomanager.stock.StockRepository;
 import com.cbfacademy.stockportfoliomanager.stock.StockService;
 import com.cbfacademy.stockportfoliomanager.exceptions.InvalidOrderException;
 import com.cbfacademy.stockportfoliomanager.client.AlphaVantageClient;
@@ -29,11 +30,13 @@ public class OrderService {
     private final StockService stockService;
     private static final Logger logger = LoggerFactory.getLogger(OrderService.class);
     private final AlphaVantageClient alphaVantageClient;
+    private final StockRepository stockRepository;
     
-    public OrderService(OrderRepository orderRepository, StockService stockService, AlphaVantageClient alphaVantageClient) {
+    public OrderService(OrderRepository orderRepository, StockService stockService, AlphaVantageClient alphaVantageClient, StockRepository stockRepository) {
         this.orderRepository = orderRepository;
         this.stockService = stockService;
         this.alphaVantageClient = alphaVantageClient;
+        this.stockRepository = stockRepository;
     }
     
     public OrderResponse placeOrder(CreateOrderRequest request) {
@@ -41,19 +44,23 @@ public class OrderService {
 
     Stock stock = stockService.getStockEntityBySymbol(symbol)
         .orElseThrow(() -> new ResourceNotFoundException("Stock not found: " + symbol));
-    
+
+     
     if (request.side() == OrderSide.SELL) {
         int currentHoldings = getCurrentHoldingsForStock(symbol);
         if (currentHoldings < request.volume()) {
             throw new InsufficientHoldingsException(symbol, request.volume(), currentHoldings);
         }
     }
-    
+
     BigDecimal executedPrice = alphaVantageClient.getStockPrice(symbol); 
 
     if(executedPrice.compareTo(BigDecimal.ZERO) <= 0){
         throw new InvalidOrderException("Could not retrieve market price for" + symbol);
     }
+
+    stock.setCurrentPrice(executedPrice);
+    stockRepository.save(stock);
 
     Order order = Order.builder()
             .stock(stock)
@@ -97,7 +104,6 @@ public class OrderService {
     List<PortfolioItemResponse> items = holdings.stream().map(row -> {
         String symbol = (String) row[0];
         String name = (String) row[1];
-        // Cast quantity to int to match your record
         int quantity = (row[4] instanceof Number n) ? n.intValue() : 0;
 
         BigDecimal currentPrice = alphaVantageClient.getStockPrice(symbol);

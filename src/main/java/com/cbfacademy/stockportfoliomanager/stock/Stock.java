@@ -1,5 +1,6 @@
 package com.cbfacademy.stockportfoliomanager.stock;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 import jakarta.persistence.*;
 import lombok.*;
@@ -29,6 +30,9 @@ public class Stock {
     
     @Column(nullable = false)
     private String industry;
+
+    @Column(name = "current_price")
+    private BigDecimal currentPrice;
 
     // This runs automatically before an object is saved(Persist) or updated in the database
     @PrePersist
