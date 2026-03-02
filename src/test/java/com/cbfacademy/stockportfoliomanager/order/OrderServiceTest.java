@@ -1,6 +1,7 @@
 package com.cbfacademy.stockportfoliomanager.order;
 
 import com.cbfacademy.stockportfoliomanager.stock.Stock;
+import com.cbfacademy.stockportfoliomanager.stock.StockRepository;
 import com.cbfacademy.stockportfoliomanager.stock.StockService;
 import com.cbfacademy.stockportfoliomanager.client.AlphaVantageClient;
 import com.cbfacademy.stockportfoliomanager.exceptions.InsufficientHoldingsException;
@@ -26,6 +27,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -33,6 +35,9 @@ class OrderServiceTest {
 
     @Mock
     private OrderRepository orderRepository;
+
+    @Mock
+    private StockRepository stockRepository;
 
     @Mock
     private StockService stockService;
@@ -346,4 +351,57 @@ class OrderServiceTest {
         assertNotNull(result);
         verify(orderRepository).save(any(Order.class));
     }
+
+
+    @Test
+void placeOrder_UpdatesStockPriceOnSuccess() {
+    // Arrange
+    String symbol = "AAPL";
+    BigDecimal apiPrice = new BigDecimal("150.00");
+    
+    // FIX 1: Must mock the stock search so the service finds the stock
+    when(stockService.getStockEntityBySymbol(symbol)).thenReturn(Optional.of(testStock));
+    when(alphaVantageClient.getStockPrice(symbol)).thenReturn(apiPrice);
+
+    when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    
+    // Act
+    orderService.placeOrder(createRequest(symbol));
+
+    // Assert
+    // Verify that the stock was updated with the NEW price
+    verify(stockRepository).save(argThat(stock -> 
+        stock.getSymbol().equals(symbol) && 
+        apiPrice.equals(stock.getCurrentPrice())
+    ));
 }
+
+
+    @Test
+void placeOrder_UsesDatabasePriceWhenApiFails() {
+    // Arrange
+    String symbol = "AAPL";
+    BigDecimal dbPrice = new BigDecimal("145.00");
+    // Ensure the stock object actually has the price set for the fallback to find
+    testStock.setCurrentPrice(dbPrice);
+    
+    // FIX 2: Mock the stock search
+    when(stockService.getStockEntityBySymbol(symbol)).thenReturn(Optional.of(testStock));
+    // Mock API to return ZERO (which triggers the fallback in your Client)
+    when(alphaVantageClient.getStockPrice(symbol)).thenReturn(dbPrice); 
+
+    when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+    // Act
+    OrderResponse response = orderService.placeOrder(createRequest(symbol));
+
+    // Assert
+    assertEquals(dbPrice, response.executedPrice(), "Should use the price from the database when API fails");
+   }
+
+
+private CreateOrderRequest createRequest(String symbol) {
+    return new CreateOrderRequest(symbol, OrderSide.BUY, 10);
+}
+}
+
